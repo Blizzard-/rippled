@@ -28,24 +28,31 @@ namespace detail {
     {
         BIGNUM* num;
 
-        BigNum (BigNum const&) = delete;
         BigNum& operator=(BigNum const&) = delete;
 
-        BigNum (const char *hex)
+        BigNum ()
+            : num (BN_new ())
         {
-            num = BN_new ();
+
+        }
+
+        BigNum (const char *hex)
+            : num (BN_new ())
+        {
             BN_hex2bn (&num, hex);
         }
 
-        BigNum ()
+        BigNum (unsigned char const* ptr, size_t len)
+            : num (BN_new ())
         {
-            num = BN_new ();
+            set (ptr, len);
         }
 
-        BigNum (unsigned char const* ptr, size_t len)
+        BigNum (BigNum const& other)
+            : num (BN_new ())
         {
-            num = BN_new ();
-            BN_bin2bn (ptr, len, num);
+            if (BN_copy (num, other.num) == nullptr)
+                BN_clear (num);
         }
 
         ~BigNum ()
@@ -57,10 +64,80 @@ namespace detail {
         {
             return num;
         }
+        
+        operator BIGNUM const* () const
+        {
+            return num;
+        }
+
+        bool set (unsigned char const* ptr, size_t len)
+        {
+            if (BN_bin2bn (ptr, len, num) == nullptr)
+                return false;
+
+            return true;
+        }
+    };
+
+    class SignaturePart
+    {
+    private:
+        size_t m_skip;
+        BigNum m_bn;
+
+    public:
+        SignaturePart (unsigned char const* sig, size_t len)
+            : m_skip (0)
+        {
+            // The format is: <02> <len> <sig>
+            if ((sig[0] != 0x02) || (len < 3))
+                return;
+            
+            size_t sigLen = sig[1];
+            
+            // Can't be longer than the data we have and must
+            // be between 1 and 33 bytes.
+            if ((sigLen > len) || (sigLen < 2) || (sigLen > 33))
+                return;
+
+            // The signature can't be negative
+            if ((sig[2] & 0x80) != 0)
+                return;
+
+            // It can't be zero
+            if ((sig[2] == 0) && (len == 1))
+                return;
+
+            // And it can't be padded
+            if ((sig[2] == 0) && ((sig[3] & 0x80) == 0))
+                return;
+
+            // Load the signature but skip the marker prefix and length
+            if (m_bn.set (sig + 2, sigLen))
+                m_skip = sigLen + 2;
+        }
+
+        bool valid () const
+        {
+            return m_skip != 0;
+        }
+
+        // The signature as a BIGNUM
+        BigNum getBigNum () const
+        {
+            return m_bn;
+        }
+        
+        // Returns the number of bytes to skip for this signature part
+        size_t skip () const
+        {
+            return m_skip;
+        }
     };
 
     // The SECp256k1 modulus
-    static BigNum modulus ("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
+    static BigNum const modulus (
+        "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
 }
 
 bool isCanonicalECDSASig (void const* vSig, size_t sigLen, ECDSA strict_param)
@@ -73,54 +150,68 @@ bool isCanonicalECDSASig (void const* vSig, size_t sigLen, ECDSA strict_param)
     // Signature should be:
     // <30> <len> [ <02> <lenR> <R> ] [ <02> <lenS> <S> ]
 
-    const bool strict = strict_param == ECDSA::strict;
-
     unsigned char const* sig = reinterpret_cast<unsigned char const*> (vSig);
 
-    if ((sigLen < 10) || (sigLen > 74))
+    if ((sigLen < 10) || (sigLen > 72))
         return false;
 
     if ((sig[0] != 0x30) || (sig[1] != (sigLen - 2)))
         return false;
+    
+    // The first two bytes are verified. Eat them.
+    sig += 2;
+    sigLen -= 2;
 
-    // Find R and check its length
-    int rPos = 4, rLen = sig[3];
-    if ((rLen < 2) || ((rLen + 6) > sigLen))
+    // Verify the R signature
+    detail::SignaturePart sigR (sig, sigLen);
+    
+    if (!sigR.valid ())
         return false;
 
-    // Find S and check its length
-    int sPos = rLen + 6, sLen = sig [rLen + 5];
-    if ((sLen < 2) || ((rLen + sLen + 6) != sigLen))
+    // Eat the number of bytes we consumed
+    sig += sigR.skip ();
+    sigLen -= sigR.skip ();
+    
+    // Verify the S signature
+    detail::SignaturePart sigS (sig, sigLen);
+    
+    if (!sigS.valid ())
+        return false;
+    
+    // Eat the number of bytes we consumed
+    sig += sigS.skip ();
+    sigLen -= sigS.skip ();
+
+    // Nothing should remain at this point.
+    if (sigLen != 0)
         return false;
 
-    if ((sig[rPos - 2] != 0x02) || (sig[sPos - 2] != 0x02))
-        return false; // R or S have wrong type
+    // Check whether R or S are greater than the modulus.
+    auto bnR (sigR.getBigNum ());
+    auto bnS (sigS.getBigNum ());
 
-    if ((sig[rPos] & 0x80) != 0)
-        return false; // R is negative
+    if (BN_cmp (bnR, detail::modulus) != -1)
+        return false;
 
-    if ((sig[rPos] == 0) && ((sig[rPos + 1] & 0x80) == 0))
-        return false; // R is padded
+    if (BN_cmp (bnS, detail::modulus) != -1)
+        return false; 
 
-    if ((sig[sPos] & 0x80) != 0)
-        return false; // S is negative
+    // For a given signature, (R,S), the signature (R, N-S) is also valid. For
+    // a signature to be fully-canonical, the smaller of these two values must
+    // be specified. If operating in strict mode, check that as well.
+    if (strict_param == ECDSA::strict)
+    {
+        detail::BigNum mS;
 
-    if ((sig[sPos] == 0) && ((sig[sPos + 1] & 0x80) == 0))
-        return false; // S is padded
+        if (BN_sub (mS, detail::modulus, bnS) == 0)
+            return false;
 
-    detail::BigNum bnR (&sig[rPos], rLen);
-    detail::BigNum bnS (&sig[sPos], sLen);
-    if ((BN_cmp (bnR, detail::modulus) != -1) || (BN_cmp (bnS, detail::modulus) != -1))
-        return false; // R or S greater than modulus
+        if (BN_cmp (bnS, mS) == 1)
+            return false;
+    }
 
-    if (!strict)
-        return true;
-
-    detail::BigNum mS;
-    BN_sub (mS, detail::modulus, bnS);
-    return BN_cmp (bnS, mS) != 1;
+    return true;
 }
-
 
 // Returns true if original signature was alread canonical
 bool makeCanonicalECDSASig (void* vSig, size_t& sigLen)
