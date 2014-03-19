@@ -17,15 +17,18 @@
 */
 //==============================================================================
 
-#if BEAST_INCLUDE_BEASTCONFIG
-#include "../../BeastConfig.h"
+#ifndef BEAST_HTTP_URLS_LARGE_DATA_H_INCLUDED
+#define BEAST_HTTP_URLS_LARGE_DATA_H_INCLUDED
+
+#include <vector>
+
+namespace beast {
+namespace http {
+
+std::vector <char const*> const&
+urls_large_data();
+
+}
+}
+
 #endif
-
-#include "impl/URL.cpp"
-#include "impl/ParsedURL.cpp"
-#include "impl/joyent_parser.cpp"
-#include "impl/raw_parser.cpp"
-
-#include "tests/client_session.test.cpp"
-#include "tests/ParsedURL.test.cpp"
-#include "tests/urls_large_data.cpp"

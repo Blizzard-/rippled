@@ -69,7 +69,6 @@
     <None Include="..\..\scripts\compile.sh" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\BeastConfig.h" />
     <ClInclude Include="..\..\beast\Arithmetic.h" />
     <ClInclude Include="..\..\beast\asio\abstract_socket.h" />
     <ClInclude Include="..\..\beast\asio\bind_handler.h" />
@@ -145,10 +144,13 @@
     <ClInclude Include="..\..\beast\FixedArray.h" />
     <ClInclude Include="..\..\beast\HeapBlock.h" />
     <ClInclude Include="..\..\beast\http\basic_message.h" />
+    <ClInclude Include="..\..\beast\http\client_session.h" />
+    <ClInclude Include="..\..\beast\http\detail\header_traits.h" />
     <ClInclude Include="..\..\beast\http\impl\http-parser\http_parser.h" />
     <ClInclude Include="..\..\beast\http\impl\joyent_parser.h" />
     <ClInclude Include="..\..\beast\http\ParsedURL.h" />
     <ClInclude Include="..\..\beast\http\raw_parser.h" />
+    <ClInclude Include="..\..\beast\http\tests\urls_large_data.h" />
     <ClInclude Include="..\..\beast\http\URL.h" />
     <ClInclude Include="..\..\beast\Insight.h" />
     <ClInclude Include="..\..\beast\insight\Base.h" />
@@ -250,6 +252,7 @@
     <ClInclude Include="..\..\beast\utility\PropertyStream.h" />
     <ClInclude Include="..\..\beast\utility\StaticObject.h" />
     <ClInclude Include="..\..\beast\Version.h" />
+    <ClInclude Include="..\..\BeastConfig.h" />
     <ClInclude Include="..\..\modules\beast_asio\async\AsyncObject.h" />
     <ClInclude Include="..\..\modules\beast_asio\basics\FixedInputBuffer.h" />
     <ClInclude Include="..\..\modules\beast_asio\basics\PeerRole.h" />
@@ -554,6 +557,18 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\beast\http\tests\basic_message.test.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\beast\http\tests\client_session.test.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\beast\http\tests\urls_large_data.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\beast\insight\impl\Collector.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>

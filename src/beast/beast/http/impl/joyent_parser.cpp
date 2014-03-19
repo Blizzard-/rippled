@@ -17,6 +17,8 @@
 */
 //==============================================================================
 
+#include "joyent_parser.h"
+
 namespace beast {
 namespace joyent {
 
