@@ -21,6 +21,7 @@
 #define RIPPLE_OVERLAY_PEERIMP_H_INCLUDED
 
 #include "../../ripple/common/MultiSocket.h"
+#include "../../beast/beast/asio/IPAddressConversion.h"
 
 namespace ripple {
 
