@@ -36,7 +36,7 @@ bool OfferCreateTransactor::isValidOffer (
         sleOffer->getFieldU32 (sfExpiration) <= mEngine->getLedger ()->getParentCloseTimeNC ())
     {
         // Offer is expired. Expired offers are considered unfunded. Delete it.
-        m_journal.info << "isValidOffer: encountered expired offer";
+        m_journal.trace << "isValidOffer: encountered expired offer";
 
         usOfferUnfundedFound.insert (sleOffer->getIndex());
 
@@ -46,7 +46,7 @@ bool OfferCreateTransactor::isValidOffer (
     if (uOfferOwnerID == uTakerAccountID)
     {
         // Would take own offer. Consider old offer expired. Delete it.
-        m_journal.info << "isValidOffer: encountered taker's own old offer";
+        m_journal.trace << "isValidOffer: encountered taker's own old offer";
 
         usOfferUnfundedFound.insert (sleOffer->getIndex());
 
@@ -529,14 +529,14 @@ TER OfferCreateTransactor::doApply ()
 
     if (uTxFlags & tfOfferCreateMask)
     {
-        m_journal.info <<
+        m_journal.trace <<
             "Malformed transaction: Invalid flags set.";
 
         return temINVALID_FLAG;
     }
     else if (bImmediateOrCancel && bFillOrKill)
     {
-        m_journal.info <<
+        m_journal.trace <<
             "Malformed transaction: both IoC and FoK set.";
 
         return temINVALID_FLAG;
@@ -595,7 +595,7 @@ TER OfferCreateTransactor::doApply ()
     // before the transaction sequence number.
     else if (bHaveCancel && (!uCancelSequence || uAccountSequenceNext - 1 <= uCancelSequence))
     {
-        m_journal.info <<
+        m_journal.trace <<
             "uAccountSequenceNext=" << uAccountSequenceNext <<
             " uOfferSequence=" << uCancelSequence;
 
@@ -691,7 +691,7 @@ TER OfferCreateTransactor::doApply ()
         const uint256   uTakeBookBase   = Ledger::getBookBase (
             uGetsCurrency, uGetsIssuerID, uPaysCurrency, uPaysIssuerID);
 
-        if (m_journal.info) m_journal.info <<
+        if (m_journal.trace) m_journal.trace <<
             "take against book:" << uTakeBookBase.ToString () <<
             " for " << saTakerGets.getFullText () <<
             " -> " << saTakerPays.getFullText ();
@@ -820,7 +820,7 @@ TER OfferCreateTransactor::doApply ()
     else
     {
         // We need to place the remainder of the offer into its order book.
-        if (m_journal.info) m_journal.info <<
+        if (m_journal.trace) m_journal.trace <<
             "offer not fully consumed:" << 
             " saTakerPays=" << saTakerPays.getFullText () <<
             " saTakerGets=" << saTakerGets.getFullText ();
@@ -842,7 +842,7 @@ TER OfferCreateTransactor::doApply ()
                 uGetsCurrency,
                 uGetsIssuerID);
 
-            if (m_journal.info) m_journal.info <<
+            if (m_journal.trace) m_journal.trace <<
                 "adding to book: " << uBookBase.ToString () <<
                 " : " << saTakerPays.getHumanCurrency () <<
                 "/" << RippleAddress::createHumanAccountID (saTakerPays.getIssuer ()) <<
@@ -918,7 +918,7 @@ TER OfferCreateTransactor::doApply ()
         // Go through the list of unfunded offers and remove them
         for (auto const& uOfferIndex : usOfferUnfundedFound)
         {
-            m_journal.info <<
+            m_journal.trace <<
                 "takeOffers: found unfunded: " << uOfferIndex.ToString ();
 
             lesActive.offerDelete (uOfferIndex);
@@ -951,7 +951,7 @@ TER OfferCreateTransactor::doApply ()
                 }
                 else
                 {
-                    m_journal.info <<
+                    m_journal.trace <<
                         "takeOffers: offer " << indexes.first <<
                         " not found in directory " << indexes.second;
                 }
@@ -965,7 +965,7 @@ TER OfferCreateTransactor::doApply ()
         }
     }
 
-    if (tesSUCCESS != terResult) m_journal.info <<
+    if (tesSUCCESS != terResult) m_journal.trace <<
         "final terResult=" << transToken (terResult);
 
     return terResult;
